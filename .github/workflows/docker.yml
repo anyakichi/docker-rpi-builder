@@ -1,0 +1,60 @@
+name: Publish Docker image
+on: [push]
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        machine:
+          [
+            raspberrypi,
+            raspberrypi-cm,
+            raspberrypi-cm3,
+            raspberrypi0,
+            raspberrypi0-wifi,
+            raspberrypi2,
+            raspberrypi3,
+            raspberrypi3-64,
+            raspberrypi4,
+            raspberrypi4-64,
+          ]
+        base:
+          [
+            thud,
+            warrior,
+            zeus,
+            dunfell,
+            gatesgarth,
+            hardknott,
+            honister,
+            kirkstone,
+          ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: docker/metadata-action@v3
+        id: meta
+        with:
+          images: |
+            anyakichi/yocto-rpi-builder
+            ghcr.io/anyakichi/yocto-rpi-builder
+          tags: ${{ matrix.base }}-${{ matrix.machine }}
+      - if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: ${{ github.ref == 'refs/heads/main' }}
+          build-args: |
+            base=${{ matrix.base }}
+            yocto_machine=${{ matrix.machine }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
